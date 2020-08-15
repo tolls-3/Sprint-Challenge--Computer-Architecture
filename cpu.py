@@ -25,7 +25,8 @@ class CPU:
             0b01000110: self.op_POP,
             0b10100111: self.op_CMP,
             0b00000111: self.Equal,
-            0b01010100: self.op_JMP
+            0b01010100: self.op_JMP,
+            0b01010101: self.op_JEQ
         }
 
     def ram_read(self, MAR):
@@ -132,6 +133,12 @@ class CPU:
 
     def op_JMP(self, reg_a, reg_b):
         self.pc = self.reg[reg_a]
+
+    def op_JEQ(self, reg_a, reg_b):
+        if self.comp_flag[self.Equal] == 0b00000001:
+            self.op_JMP(reg_a, reg_b)
+        else:
+            self.pc += 2
 
     def ldi(self, operand_a, operand_b):
         self.reg[operand_a] = operand_b
