@@ -12,9 +12,8 @@ class CPU:
         self.reg = [0] * 8
         self.pc = 0
         self.running = True
-        self.comp_flag = [0] * 8
         self.sp = 7
-        self.Equal = 0b00000111
+        self.FLG = 0b00000000
 
         self.branch_table = {
             0b00000001: self.op_HLT,
@@ -24,9 +23,9 @@ class CPU:
             0b01000101: self.op_PUSH,
             0b01000110: self.op_POP,
             0b10100111: self.op_CMP,
-            0b00000111: self.Equal,
             0b01010100: self.op_JMP,
-            0b01010101: self.op_JEQ
+            0b01010101: self.op_JEQ,
+            0b01010110: self.op_JNE
         }
 
     def ram_read(self, MAR):
@@ -38,40 +37,6 @@ class CPU:
 
     def load(self):
         """Load a program into memory."""
-
-        # address = 0
-
-        # # # For now, we've just hardcoded a program:
-
-        # program = [
-        #     0b10000010,  # LDI R0,8
-        #     0b00000000,
-        #     0b00001000,
-        #     0b10000010,  # LDI R1,9
-        #     0b00000001,
-        #     0b00001001,
-        #     0b10100010,  # MUL R0,R1
-        #     0b00000000,
-        #     0b00000001,
-        #     0b01000111,  # PRN R0
-        #     0b00000000,
-        #     0b00000001,  # HLT
-        # ]
-
-        # program = [
-        #     # From print8.ls8
-        #     0b10000010,  # LDI R0,8
-        #     0b00000000,
-        #     0b00001000,
-        #     0b01000111,  # PRN R0
-        #     0b00000000,
-        #     0b00000001,  # HLT
-        # ]
-
-        # for instruction in program:
-        #     self.ram[address] = instruction
-        #     address += 1
-
         filename = sys.argv[1]
         try:
             address = 0
@@ -99,44 +64,36 @@ class CPU:
             self.reg[reg_a] *= self.reg[reg_b]
 
         elif op == "CMP":
-            if reg_a == reg_b:
-                self.comp_flag[self.Equal] = 0b0000001
+            if self.reg[reg_a] > self.reg[reg_b]:
+                # modify sevent bit if a > b
+                self.FLG = 0b00000010
+            if self.reg[reg_a] < self.reg[reg_b]:
+                # modify sixth bit if b < a
+                self.FLG = 0b00000100
             else:
-                self.comp_flag[self.Equal] = 0b00000000
+                # modfy 8th bit if equal
+                self.FLG = 0b00000001
         else:
             raise Exception("Unsupported ALU operation")
 
-    def trace(self):
-        """
-        Handy function to print out the CPU state. You might want to call this
-        from run() if you need help debugging.
-        """
+    def op_CMP(self):
+        operand_a, operand_b = self.return_operands()
+        self.alu('CMP',  operand_a, operand_b)
+        self.pc += 3
 
-        print(f"TRACE: %02X | %02X %02X %02X |" % (
-            self.pc,
-            # self.fl,
-            # self.ie,
-            self.ram_read(self.pc),
-            self.ram_read(self.pc + 1),
-            self.ram_read(self.pc + 2)
-        ), end='')
+    def op_JMP(self):
+        operand_a, _ = self.return_operands()
+        self.pc = self.reg[operand_a]
 
-        for i in range(8):
-            print(" %02X" % self.reg[i], end='')
+    def op_JEQ(self):
+        if self.FLG == 0b00000001:
+            self.op_JMP()
+        else:
+            self.pc += 2
 
-        print()
-
-    def op_CMP(self, reg_a, reg_b):
-        reg_value1 = self.reg[reg_a]
-        reg_value2 = self.reg[reg_b]
-        self.alu('CMP', reg_value1, reg_value2)
-
-    def op_JMP(self, reg_a, reg_b):
-        self.pc = self.reg[reg_a]
-
-    def op_JEQ(self, reg_a, reg_b):
-        if self.comp_flag[self.Equal] == 0b00000001:
-            self.op_JMP(reg_a, reg_b)
+    def op_JNE(self):
+        if self.FLG != 0b00000001:
+            self.op_JMP()
         else:
             self.pc += 2
 
@@ -192,5 +149,5 @@ class CPU:
             if IR in self.branch_table:
                 self.branch_table[IR]()
             else:
-                print('Error or something like that!')
-                self.op_HLT()
+                print('Error Instruction!')
+                sys.exit(1)
