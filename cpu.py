@@ -12,7 +12,7 @@ class CPU:
         self.reg = [0] * 8
         self.pc = 0
         self.running = True
-        self.fl = 0
+        self.comp_flag = [0] * 8
         self.sp = 7
 
         self.branch_table = {
@@ -21,7 +21,9 @@ class CPU:
             0b01000111: self.op_PRN,
             0b10100010: self.op_MUL,
             0b01000101: self.op_PUSH,
-            0b01000110: self.op_POP
+            0b01000110: self.op_POP,
+            0b10100111: self.op_CMP,
+            0b00000111: self.Equal
         }
 
     def ram_read(self, MAR):
@@ -92,6 +94,12 @@ class CPU:
         # elif op == "SUB": etc
         elif op == "MUL":
             self.reg[reg_a] *= self.reg[reg_b]
+
+        elif op == "CMP":
+            if reg_a == reg_b:
+                self.comp_flag[self.Equal()] = 0b0000001
+            else:
+                self.comp_flag[self.Equal()] = 0b00000000
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -114,6 +122,14 @@ class CPU:
             print(" %02X" % self.reg[i], end='')
 
         print()
+
+    def Equal(self):
+        return 0b00000111
+
+    def op_CMP(self, reg_a, reg_b):
+        reg_value1 = self.reg[reg_a]
+        reg_value2 = self.reg[reg_b]
+        self.alu('CMP', reg_value1, reg_value2)
 
     def ldi(self, operand_a, operand_b):
         self.reg[operand_a] = operand_b
